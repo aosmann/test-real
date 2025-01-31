@@ -5,7 +5,7 @@ const initialProperties: Property[] = [
   {
     id: 1,
     title: "Modern Waterfront Villa",
-    price: "$1,250,000",
+    price: 1250000,
     description: "Stunning waterfront villa with panoramic ocean views. This modern masterpiece features an open floor plan, high-end finishes, and direct beach access.",
     thumbnailImage: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1600&q=80",
     images: [
@@ -20,12 +20,15 @@ const initialProperties: Property[] = [
     location: "Miami Beach, FL",
     parking: true,
     beachfront: true,
-    type: "Home"
+    type: "Home",
+    features: ["Ocean View", "Pool", "Modern Kitchen"],
+    mapLocation: null,
+    order: 0
   },
   {
     id: 2,
     title: "Luxury Downtown Penthouse",
-    price: "$2,800,000",
+    price: 2800000,
     description: "Spectacular penthouse in the heart of the city. Floor-to-ceiling windows offer breathtaking city views. Features include a gourmet kitchen, private elevator, and wraparound terrace.",
     thumbnailImage: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1600&q=80",
     images: [
@@ -40,7 +43,10 @@ const initialProperties: Property[] = [
     location: "Manhattan, NY",
     parking: true,
     beachfront: false,
-    type: "Home"
+    type: "Home",
+    features: ["City View", "Private Elevator", "Terrace"],
+    mapLocation: null,
+    order: 1
   }
 ];
 
@@ -54,8 +60,20 @@ export function useProperties() {
     localStorage.setItem('properties', JSON.stringify(properties));
   }, [properties]);
 
-  const addProperty = (property: Property) => {
-    setProperties(prev => [...prev, property]);
+  const addProperty = (property: Omit<Property, 'id' | 'order'>) => {
+    const newProperty = {
+      ...property,
+      id: Date.now(),
+      order: -1 // Will be placed at the top
+    };
+    
+    setProperties(prev => {
+      const reordered = prev.map(p => ({
+        ...p,
+        order: p.order + 1
+      }));
+      return [newProperty, ...reordered].sort((a, b) => a.order - b.order);
+    });
   };
 
   const updateProperty = (updatedProperty: Property) => {
@@ -70,10 +88,24 @@ export function useProperties() {
     setProperties(prev => prev.filter(property => property.id !== id));
   };
 
+  const reorderProperties = (startIndex: number, endIndex: number) => {
+    const result = Array.from(properties);
+    const [removed] = result.splice(startIndex, 1);
+    result.splice(endIndex, 0, removed);
+    
+    const reordered = result.map((item, index) => ({
+      ...item,
+      order: index
+    }));
+    
+    setProperties(reordered);
+  };
+
   return {
-    properties,
+    properties: properties.sort((a, b) => a.order - b.order),
     addProperty,
     updateProperty,
-    deleteProperty
+    deleteProperty,
+    reorderProperties
   };
 }

@@ -1,9 +1,9 @@
-export type PropertyType = 'Home' | 'Land';
+export type PropertyType = string;
 
 export interface Property {
   id: number;
   title: string;
-  price: string;
+  price: number;
   description: string;
   thumbnailImage: string;
   images: string[];
@@ -14,4 +14,17 @@ export interface Property {
   parking: boolean;
   beachfront: boolean;
   type: PropertyType;
+  features: string[];
+  mapLocation: {
+    lat: number;
+    lng: number;
+    address: string;
+  } | null;
+  order: number;
+}
+
+export interface PropertyTypeItem {
+  id: number;
+  name: string;
+  order: number;
 }

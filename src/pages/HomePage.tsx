@@ -2,45 +2,21 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Home, Bath, BedDouble, Ruler, Heart, Search, MapPin } from 'lucide-react';
 import { useProperties } from '../hooks/useProperties';
+import { formatPrice } from '../utils/formatters';
 
 function HomePage() {
   const { properties } = useProperties();
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Home className="h-8 w-8 text-primary" />
-              <h1 className="ml-2 text-2xl font-bold text-gray-900">LuxuryEstates</h1>
-            </div>
-            <div className="flex items-center space-x-8">
-              <nav className="hidden md:flex space-x-8">
-                <a href="#" className="text-gray-700 hover:text-primary">Buy</a>
-                <a href="#" className="text-gray-700 hover:text-primary">Rent</a>
-                <a href="#" className="text-gray-700 hover:text-primary">Sell</a>
-                <a href="#" className="text-gray-700 hover:text-primary">Contact</a>
-              </nav>
-              <Link 
-                to="/studio"
-                className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90"
-              >
-                Studio
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Hero Section */}
-      <div className="relative min-h-[calc(80vh-80px)] flex items-center">
+      <div className="relative h-[80vh] flex items-center">
         <div className="absolute inset-0">
           <img
             className="w-full h-full object-cover"
             src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=2000&q=80"
             alt="Luxury Home"
+            style={{ objectPosition: 'center center' }}
           />
           <div className="absolute inset-0 bg-gray-900 bg-opacity-70 mix-blend-multiply" />
         </div>
@@ -77,9 +53,7 @@ function HomePage() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="mb-12">
+      <div className="my-12">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">Featured Properties</h2>
           <p className="text-gray-600">Discover our handpicked selection of luxury properties</p>
         </div>
@@ -121,7 +95,7 @@ function HomePage() {
                     <h3 className="text-xl font-bold text-gray-900 mb-2">{property.title}</h3>
                     <p className="text-gray-600">{property.location}</p>
                   </div>
-                  <p className="text-xl font-bold text-primary">{property.price}</p>
+                  <p className="text-xl font-bold text-primary">{formatPrice(property.price)}</p>
                 </div>
                 <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                   <div className="flex items-center text-gray-600">
@@ -141,7 +115,6 @@ function HomePage() {
             </Link>
           ))}
         </div>
-      </main>
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white mt-16">
