@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Plus, X, Pencil, ImagePlus, GripVertical } from 'lucide-react';
-import { Property, PropertyType } from '../types';
+import { Plus, X, Pencil, ImagePlus, GripVertical, Check } from 'lucide-react';
+import { Property, PropertyTypeItem } from '../types';
 import { useProperties } from '../hooks/useProperties';
 import { usePropertyTypes } from '../hooks/usePropertyTypes';
 import MapPicker from '../components/MapPicker';
@@ -30,7 +30,7 @@ function SortablePropertyCard({ property, onEdit, onDelete }) {
             <GripVertical className="h-6 w-6 text-gray-400" />
           </div>
           <img
-            src={property.thumbnailImage}
+            src={property.thumbnail_image}
             alt={property.title}
             className="w-32 h-32 object-cover rounded-lg"
           />
@@ -80,7 +80,7 @@ function StudioPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [showTypeForm, setShowTypeForm] = useState(false);
-  const [editingType, setEditingType] = useState<{ id: number; name: string } | null>(null);
+  const [editingType, setEditingType] = useState<{ id: string; name: string } | null>(null);
   const [newTypeName, setNewTypeName] = useState('');
   const [newImages, setNewImages] = useState<string>('');
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
@@ -91,11 +91,11 @@ function StudioPage() {
     useSensor(KeyboardSensor)
   );
 
-  const initialPropertyState = {
-    id: 0,
+  const initialPropertyState: Omit<Property, 'id' | 'created_at'> = {
     title: '',
     price: 0,
-    thumbnailImage: '',
+    description: '',
+    thumbnail_image: '',
     images: [],
     beds: 0,
     baths: 0,
@@ -105,14 +105,14 @@ function StudioPage() {
     beachfront: false,
     type: types[0]?.name || 'Home',
     features: [],
-    mapLocation: null,
+    map_location: null,
     order: 0
   };
 
-  const [formData, setFormData] = useState<Property>(initialPropertyState);
+  const [formData, setFormData] = useState(initialPropertyState);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target as HTMLInputElement;
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : 
@@ -124,47 +124,67 @@ function StudioPage() {
     setNewImages(e.target.value);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const images = newImages.split('\n').filter(url => url.trim() !== '');
-    
-    const propertyData = {
-      ...formData,
-      images,
-      features: selectedFeatures
-    };
-    
-    if (editingProperty) {
-      updateProperty(propertyData);
-    } else {
-      addProperty(propertyData);
+    try {
+      const images = newImages.split('\n').filter(url => url.trim() !== '');
+      
+      const propertyData = {
+        ...formData,
+        images,
+        features: selectedFeatures,
+        price: Number(formData.price),
+        beds: Number(formData.beds),
+        baths: Number(formData.baths),
+        sqft: Number(formData.sqft)
+      };
+      
+      if (editingProperty) {
+        await updateProperty({ ...propertyData, id: editingProperty.id });
+      } else {
+        await addProperty(propertyData);
+      }
+      
+      setShowForm(false);
+      setEditingProperty(null);
+      setFormData(initialPropertyState);
+      setNewImages('');
+      setSelectedFeatures([]);
+    } catch (error) {
+      console.error('Error saving property:', error);
+      alert('Failed to save property. Please try again.');
     }
-    
-    setShowForm(false);
-    setEditingProperty(null);
-    setFormData(initialPropertyState);
-    setNewImages('');
-    setSelectedFeatures([]);
   };
 
   const handleEdit = (property: Property) => {
     setEditingProperty(property);
-    setFormData(property);
+    setFormData({
+      ...property,
+      price: Number(property.price),
+      beds: Number(property.beds),
+      baths: Number(property.baths),
+      sqft: Number(property.sqft)
+    });
     setNewImages(property.images.join('\n'));
     setSelectedFeatures(property.features || []);
     setShowForm(true);
   };
 
-  const handleTypeSubmit = (e: React.FormEvent) => {
+  const handleTypeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingType) {
-      updateType(editingType.id, newTypeName);
-    } else {
-      addType(newTypeName);
+    try {
+      if (editingType) {
+        await updateType(editingType.id, newTypeName);
+      } else {
+        await addType(newTypeName);
+      }
+      setShowTypeForm(false);
+      setEditingType(null);
+      setNewTypeName('');
+    } catch (error) {
+      console.error('Error saving property type:', error);
+      alert('Failed to save property type. Please try again.');
     }
-    setShowTypeForm(false);
-    setEditingType(null);
-    setNewTypeName('');
   };
 
   const handleAddFeature = () => {
@@ -344,8 +364,8 @@ function StudioPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail Image URL</label>
                   <input
                     type="url"
-                    name="thumbnailImage"
-                    value={formData.thumbnailImage}
+                    name="thumbnail_image"
+                    value={formData.thumbnail_image}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary"
                     required
@@ -385,6 +405,18 @@ function StudioPage() {
                     required
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary"
+                  required
+                />
               </div>
 
               <div className="flex items-center space-x-4">
@@ -462,8 +494,8 @@ function StudioPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Location on Map</label>
                 <MapPicker
-                  location={formData.mapLocation}
-                  onChange={(location) => setFormData(prev => ({ ...prev, mapLocation: location }))}
+                  location={formData.map_location}
+                  onChange={(location) => setFormData(prev => ({ ...prev, map_location: location }))}
                 />
               </div>
 
