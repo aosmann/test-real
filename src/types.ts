@@ -1,11 +1,11 @@
 export type PropertyType = string;
 
 export interface Property {
-  id: number;
+  id: string;  // Changed from number to string (UUID)
   title: string;
   price: number;
   description: string;
-  thumbnailImage: string;
+  thumbnail_image: string;  // Changed from camelCase to snake_case
   images: string[];
   beds: number;
   baths: number;
@@ -15,16 +15,18 @@ export interface Property {
   beachfront: boolean;
   type: PropertyType;
   features: string[];
-  mapLocation: {
+  map_location: {  // Changed from camelCase to snake_case
     lat: number;
     lng: number;
     address: string;
   } | null;
   order: number;
+  created_at?: string;  // Added to match database
 }
 
 export interface PropertyTypeItem {
-  id: number;
+  id: string;  // Changed from number to string (UUID)
   name: string;
   order: number;
+  created_at?: string;  // Added to match database
 }

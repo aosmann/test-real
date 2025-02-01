@@ -1,58 +1,130 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { PropertyTypeItem } from '../types';
 
 export function usePropertyTypes() {
-  const [types, setTypes] = useState<PropertyTypeItem[]>(() => {
-    const saved = localStorage.getItem('propertyTypes');
-    return saved ? JSON.parse(saved) : [
-      { id: 1, name: 'Home', order: 0 },
-      { id: 2, name: 'Land', order: 1 }
-    ];
-  });
+  const [types, setTypes] = useState<PropertyTypeItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    localStorage.setItem('propertyTypes', JSON.stringify(types));
-  }, [types]);
+    fetchTypes();
+  }, []);
 
-  const addType = (name: string) => {
-    const newType = {
-      id: Date.now(),
-      name,
-      order: types.length
-    };
-    setTypes(prev => [...prev, newType]);
-  };
+  async function fetchTypes() {
+    try {
+      const { data, error } = await supabase
+        .from('property_types')
+        .select('*')
+        .order('order');
 
-  const updateType = (id: number, name: string) => {
-    setTypes(prev =>
-      prev.map(type =>
-        type.id === id ? { ...type, name } : type
-      )
-    );
-  };
+      if (error) throw error;
+      setTypes(data || []);
+    } catch (err) {
+      console.error('Error fetching property types:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const deleteType = (id: number) => {
-    setTypes(prev => prev.filter(type => type.id !== id));
-  };
+  async function addType(name: string) {
+    try {
+      const { data: maxOrderResult } = await supabase
+        .from('property_types')
+        .select('order')
+        .order('order', { ascending: false })
+        .limit(1);
 
-  const reorderTypes = (startIndex: number, endIndex: number) => {
-    const result = Array.from(types);
-    const [removed] = result.splice(startIndex, 1);
-    result.splice(endIndex, 0, removed);
+      const newOrder = maxOrderResult?.[0]?.order + 1 || 0;
+
+      const { data, error } = await supabase
+        .from('property_types')
+        .insert([{ name, order: newOrder }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      setTypes(prev => [...prev, data]);
+      return data;
+    } catch (err) {
+      console.error('Error adding property type:', err);
+      setError(err.message);
+      throw err;
+    }
+  }
+
+  async function updateType(id: string, name: string) {
+    try {
+      const { error } = await supabase
+        .from('property_types')
+        .update({ name })
+        .eq('id', id);
+
+      if (error) throw error;
+      setTypes(prev =>
+        prev.map(type =>
+          type.id === id ? { ...type, name } : type
+        )
+      );
+    } catch (err) {
+      console.error('Error updating property type:', err);
+      setError(err.message);
+      throw err;
+    }
+  }
+
+  async function deleteType(id: string) {
+    try {
+      const { error } = await supabase
+        .from('property_types')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      setTypes(prev => prev.filter(type => type.id !== id));
+    } catch (err) {
+      console.error('Error deleting property type:', err);
+      setError(err.message);
+      throw err;
+    }
+  }
+
+  async function reorderTypes(startIndex: number, endIndex: number) {
+    const reordered = Array.from(types);
+    const [removed] = reordered.splice(startIndex, 1);
+    reordered.splice(endIndex, 0, removed);
     
-    const reordered = result.map((item, index) => ({
-      ...item,
-      order: index
+    const updates = reordered.map((type, index) => ({
+      id: type.id,
+      order: index,
     }));
-    
-    setTypes(reordered);
-  };
+
+    try {
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('property_types')
+          .update({ order: update.order })
+          .eq('id', update.id);
+
+        if (error) throw error;
+      }
+      
+      setTypes(reordered);
+    } catch (err) {
+      console.error('Error reordering property types:', err);
+      setError(err.message);
+      throw err;
+    }
+  }
 
   return {
-    types: types.sort((a, b) => a.order - b.order),
+    types,
+    loading,
+    error,
     addType,
     updateType,
     deleteType,
-    reorderTypes
+    reorderTypes,
   };
 }

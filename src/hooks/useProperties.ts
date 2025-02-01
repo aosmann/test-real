@@ -1,111 +1,145 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { Property } from '../types';
 
-const initialProperties: Property[] = [
-  {
-    id: 1,
-    title: "Modern Waterfront Villa",
-    price: 1250000,
-    description: "Stunning waterfront villa with panoramic ocean views. This modern masterpiece features an open floor plan, high-end finishes, and direct beach access.",
-    thumbnailImage: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1600&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1600&q=80",
-      "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1600&q=80",
-      "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1600&q=80",
-      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1600&q=80"
-    ],
-    beds: 4,
-    baths: 3,
-    sqft: 3200,
-    location: "Miami Beach, FL",
-    parking: true,
-    beachfront: true,
-    type: "Home",
-    features: ["Ocean View", "Pool", "Modern Kitchen"],
-    mapLocation: null,
-    order: 0
-  },
-  {
-    id: 2,
-    title: "Luxury Downtown Penthouse",
-    price: 2800000,
-    description: "Spectacular penthouse in the heart of the city. Floor-to-ceiling windows offer breathtaking city views. Features include a gourmet kitchen, private elevator, and wraparound terrace.",
-    thumbnailImage: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1600&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1600&q=80",
-      "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1600&q=80",
-      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1600&q=80",
-      "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1600&q=80"
-    ],
-    beds: 3,
-    baths: 2.5,
-    sqft: 2800,
-    location: "Manhattan, NY",
-    parking: true,
-    beachfront: false,
-    type: "Home",
-    features: ["City View", "Private Elevator", "Terrace"],
-    mapLocation: null,
-    order: 1
-  }
-];
-
 export function useProperties() {
-  const [properties, setProperties] = useState<Property[]>(() => {
-    const saved = localStorage.getItem('properties');
-    return saved ? JSON.parse(saved) : initialProperties;
-  });
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    localStorage.setItem('properties', JSON.stringify(properties));
-  }, [properties]);
+    fetchProperties();
+  }, []);
 
-  const addProperty = (property: Omit<Property, 'id' | 'order'>) => {
-    const newProperty = {
-      ...property,
-      id: Date.now(),
-      order: -1 // Will be placed at the top
-    };
+  async function fetchProperties() {
+    try {
+      const { data, error } = await supabase
+        .from('properties')
+        .select('*')
+        .order('order');
+
+      if (error) throw error;
+      setProperties(data || []);
+    } catch (err) {
+      console.error('Error fetching properties:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function addProperty(property: Omit<Property, 'id' | 'order' | 'created_at'>) {
+    try {
+      const { data: maxOrderResult } = await supabase
+        .from('properties')
+        .select('order')
+        .order('order', { ascending: false })
+        .limit(1);
+
+      const newOrder = maxOrderResult?.[0]?.order + 1 || 0;
+
+      // Convert camelCase to snake_case for database
+      const propertyData = {
+        ...property,
+        thumbnail_image: property.thumbnail_image,
+        map_location: property.map_location,
+        order: newOrder
+      };
+
+      const { data, error } = await supabase
+        .from('properties')
+        .insert([propertyData])
+        .select()
+        .single();
+
+      if (error) throw error;
+      setProperties(prev => [...prev, data]);
+      return data;
+    } catch (err) {
+      console.error('Error adding property:', err);
+      setError(err.message);
+      throw err;
+    }
+  }
+
+  async function updateProperty(updatedProperty: Property) {
+    try {
+      // Convert camelCase to snake_case for database
+      const propertyData = {
+        ...updatedProperty,
+        thumbnail_image: updatedProperty.thumbnail_image,
+        map_location: updatedProperty.map_location
+      };
+
+      const { error } = await supabase
+        .from('properties')
+        .update(propertyData)
+        .eq('id', updatedProperty.id);
+
+      if (error) throw error;
+      setProperties(prev =>
+        prev.map(property =>
+          property.id === updatedProperty.id ? updatedProperty : property
+        )
+      );
+    } catch (err) {
+      console.error('Error updating property:', err);
+      setError(err.message);
+      throw err;
+    }
+  }
+
+  async function deleteProperty(id: string) {
+    try {
+      const { error } = await supabase
+        .from('properties')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      setProperties(prev => prev.filter(property => property.id !== id));
+    } catch (err) {
+      console.error('Error deleting property:', err);
+      setError(err.message);
+      throw err;
+    }
+  }
+
+  async function reorderProperties(startIndex: number, endIndex: number) {
+    const reordered = Array.from(properties);
+    const [removed] = reordered.splice(startIndex, 1);
+    reordered.splice(endIndex, 0, removed);
     
-    setProperties(prev => {
-      const reordered = prev.map(p => ({
-        ...p,
-        order: p.order + 1
-      }));
-      return [newProperty, ...reordered].sort((a, b) => a.order - b.order);
-    });
-  };
-
-  const updateProperty = (updatedProperty: Property) => {
-    setProperties(prev =>
-      prev.map(property =>
-        property.id === updatedProperty.id ? updatedProperty : property
-      )
-    );
-  };
-
-  const deleteProperty = (id: number) => {
-    setProperties(prev => prev.filter(property => property.id !== id));
-  };
-
-  const reorderProperties = (startIndex: number, endIndex: number) => {
-    const result = Array.from(properties);
-    const [removed] = result.splice(startIndex, 1);
-    result.splice(endIndex, 0, removed);
-    
-    const reordered = result.map((item, index) => ({
-      ...item,
-      order: index
+    const updates = reordered.map((property, index) => ({
+      id: property.id,
+      order: index,
     }));
-    
-    setProperties(reordered);
-  };
+
+    try {
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('properties')
+          .update({ order: update.order })
+          .eq('id', update.id);
+
+        if (error) throw error;
+      }
+      
+      setProperties(reordered);
+    } catch (err) {
+      console.error('Error reordering properties:', err);
+      setError(err.message);
+      throw err;
+    }
+  }
 
   return {
-    properties: properties.sort((a, b) => a.order - b.order),
+    properties,
+    loading,
+    error,
     addProperty,
     updateProperty,
     deleteProperty,
-    reorderProperties
+    reorderProperties,
   };
 }

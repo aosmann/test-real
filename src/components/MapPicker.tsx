@@ -9,8 +9,7 @@ interface MapPickerProps {
 function MapPicker({ location, onChange }: MapPickerProps) {
   const [address, setAddress] = React.useState(location?.address || '');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = async () => {
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`
@@ -30,7 +29,7 @@ function MapPicker({ location, onChange }: MapPickerProps) {
 
   return (
     <div className="space-y-4">
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      <div className="flex gap-2">
         <div className="flex-1 relative">
           <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
           <input
@@ -42,12 +41,13 @@ function MapPicker({ location, onChange }: MapPickerProps) {
           />
         </div>
         <button
-          type="submit"
+          type="button"
+          onClick={handleSearch}
           className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
         >
           Set Location
         </button>
-      </form>
+      </div>
       
       {location && (
         <div className="aspect-video relative rounded-lg overflow-hidden">
