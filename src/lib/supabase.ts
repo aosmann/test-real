@@ -8,3 +8,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Helper function to check if user is authenticated
+export const isAuthenticated = async () => {
+  const { data: { session }, error } = await supabase.auth.getSession();
+  return !!session;
+};
