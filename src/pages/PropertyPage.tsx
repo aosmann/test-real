@@ -9,7 +9,7 @@ function PropertyPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { properties } = useProperties();
-  const property = properties.find(p => p.id === Number(id));
+  const property = properties.find(p => p.id === id);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     name: '',

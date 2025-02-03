@@ -9,6 +9,8 @@ export default function Auth() {
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +38,10 @@ export default function Auth() {
         email,
         password,
         options: {
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: `${window.location.origin}/studio`,
+          data: {
+            email_confirmed: false,
+          }
         },
       });
       if (error) throw error;
@@ -47,6 +52,50 @@ export default function Auth() {
       setLoading(false);
     }
   };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      setError(null);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/studio`,
+      });
+      if (error) throw error;
+      setResetEmailSent(true);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (resetEmailSent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-sm">
+          <div className="text-center">
+            <Mail className="mx-auto h-12 w-12 text-primary" />
+            <h2 className="mt-6 text-3xl font-bold text-gray-900">Check your email</h2>
+            <p className="mt-2 text-gray-600">
+              We've sent password reset instructions to <strong>{email}</strong>
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setResetEmailSent(false);
+              setIsResettingPassword(false);
+              setEmail('');
+            }}
+            className="mt-4 w-full flex items-center justify-center gap-2 py-2 px-4 text-sm text-gray-600 hover:text-primary"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to sign in
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (verificationSent) {
     return (
@@ -68,6 +117,69 @@ export default function Auth() {
               setIsSignUp(false);
               setEmail('');
               setPassword('');
+            }}
+            className="mt-4 w-full flex items-center justify-center gap-2 py-2 px-4 text-sm text-gray-600 hover:text-primary"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to sign in
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isResettingPassword) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-sm">
+          <div>
+            <h2 className="text-center text-3xl font-bold text-gray-900">Reset your password</h2>
+            <p className="mt-2 text-center text-sm text-gray-600">
+              Enter your email address and we'll send you instructions to reset your password.
+            </p>
+          </div>
+
+          <form className="mt-8 space-y-6" onSubmit={handleResetPassword}>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded text-sm">
+                {error}
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email address
+              </label>
+              <div className="mt-1 relative">
+                <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                <input
+                  id="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary"
+                  placeholder="you@example.com"
+                />
+              </div>
+            </div>
+
+            <div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              >
+                {loading ? 'Please wait...' : 'Send reset instructions'}
+              </button>
+            </div>
+          </form>
+
+          <button
+            onClick={() => {
+              setIsResettingPassword(false);
+              setEmail('');
+              setError(null);
             }}
             className="mt-4 w-full flex items-center justify-center gap-2 py-2 px-4 text-sm text-gray-600 hover:text-primary"
           >
@@ -147,17 +259,33 @@ export default function Auth() {
           </div>
         </form>
 
-        <div className="text-center">
-          <button
-            type="button"
-            onClick={() => {
-              setIsSignUp(!isSignUp);
-              setError(null);
-            }}
-            className="text-sm text-primary hover:text-primary/80"
-          >
-            {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-          </button>
+        <div className="space-y-4">
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError(null);
+              }}
+              className="text-sm text-primary hover:text-primary/80"
+            >
+              {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+            </button>
+          </div>
+          {!isSignUp && (
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsResettingPassword(true);
+                  setError(null);
+                }}
+                className="text-sm text-gray-600 hover:text-primary"
+              >
+                Forgot your password?
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
